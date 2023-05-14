@@ -1,17 +1,45 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+import requests
+import json
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+from geopy.distance import geodesic
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
+URL_PLACE = "https://api.gios.gov.pl/pjp-api/rest/station/sensors/"
 
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+def download_data(url, id=-1):
+    headers = {'User-Agent': 'Mozilla/5.0'}
+
+    if (id == -1):
+        response = requests.get(url, headers=headers)
+    else:
+        response = requests.get(f'{url}{id}', headers=headers)
+
+    if response.ok:
+        print(f'Kod odpowiedzi: {response.status_code}')
+        return response
+    else:
+        print(f'Błąd pobierania danych: {response.status_code}')
+        exit()
+
+
+def conv_data_to_json(response):
+    try:
+        data = response.json()
+        return data
+    except json.decoder.JSONDecodeError:
+        print('Niepoprawny format danych JSON')
+        exit()
+
+download_data(URL_STATION)
+allStations = download_data(URL_STATION)
+print(allStations)
+conv_data_to_json(allStations)
+allStationsJson = conv_data_to_json(allStations)
+print(allStationsJson)
+
+for station in allStationsJson:
+    print(station)
