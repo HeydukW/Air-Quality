@@ -34,7 +34,7 @@ def conv_data_to_json(response):
         print('Niepoprawny format danych JSON')
         exit()
 
-download_data(URL_STATION)
+
 allStations = download_data(URL_STATION)
 print(allStations)
 conv_data_to_json(allStations)
@@ -43,3 +43,9 @@ print(allStationsJson)
 
 for station in allStationsJson:
     print(station)
+
+dataFromUser = input('Podaj id stacji: ')
+id = download_data(URL_PLACE , dataFromUser)
+conv_data_to_json(id)
+print(conv_data_to_json(id))
+
