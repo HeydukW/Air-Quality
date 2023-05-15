@@ -8,7 +8,7 @@ from geopy.distance import geodesic
 
 URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
 URL_PLACE = "https://api.gios.gov.pl/pjp-api/rest/station/sensors/"
-
+URL_DANEPOMIAROWE = "https://api.gios.gov.pl/pjp-api/rest/data/getData"
 
 def download_data(url, id=-1):
     headers = {'User-Agent': 'Mozilla/5.0'}
@@ -49,3 +49,24 @@ id = download_data(URL_PLACE , dataFromUser)
 conv_data_to_json(id)
 print(conv_data_to_json(id))
 
+
+#
+def conv_data_to_json(response):
+    try:
+        data = response.json()
+        return data
+    except json.decoder.JSONDecodeError:
+        print('Niepoprawny format danych JSON')
+        exit()
+
+
+dataFromUser = input('Podaj id stanowiska: ')
+url_data = f"https://api.gios.gov.pl/pjp-api/rest/data/getData/{dataFromUser}"
+data = download_data(url_data)
+data_json = conv_data_to_json(data)
+print(data_json)
+
+for measurement in data_json['values']:
+    date = measurement['date']
+    value = measurement['value']
+    print(f"Data: {date}, Value: {value}")
