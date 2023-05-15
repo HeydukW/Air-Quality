@@ -70,3 +70,26 @@ for measurement in data_json['values']:
     date = measurement['date']
     value = measurement['value']
     print(f"Data: {date}, Value: {value}")
+
+
+#index
+
+import requests
+
+def get_air_quality_index(station_id):
+    url = f"https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/{station_id}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        print(f"Nie udało się pobrać danych. Kod odpowiedzi: {response.status_code}")
+        return None
+
+station_id = input("Podaj identyfikator stacji pomiarowej: ")
+index_data = get_air_quality_index(station_id)
+
+if index_data:
+    print(index_data)
+
