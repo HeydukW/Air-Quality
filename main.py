@@ -88,4 +88,34 @@ def get_coordinates(location):
 def calculate_distance(coords1, coords2):
     return geodesic(coords1, coords2).kilometers
 
+# Pobranie lokalizacji od użytkownika
+user_location = input("Podaj swoją lokalizację: ")
+
+# Pobranie zakresu od użytkownika
+distance_range = float(input("Podaj zakres (w km): "))
+
+# Pobranie współrzędnych użytkownika
+user_coords = get_coordinates(user_location)
+
+if user_coords:
+    stations_within_range = []
+
+    # Iteracja przez wszystkie stacje pomiarowe
+    for station in all_station:
+        station_coords = (station['gegrLat'], station['gegrLon'])
+        station_distance = calculate_distance(user_coords, station_coords)
+
+        # Sprawdzenie, czy odległość mieści się w zakresie
+        if station_distance <= distance_range:
+            stations_within_range.append(station)
+
+    if stations_within_range:
+        print(f"Liczba stacji w odległości {distance_range} km: {len(stations_within_range)}")
+        print("Stacje pomiarowe w określonym zakresie:")
+        for station in stations_within_range:
+            print(f"ID: {station['id']}")
+            print(f"Nazwa: {station['stationName']}")
+            print(f"Odległość: {calculate_distance(user_coords, (station['gegrLat'], station['gegrLon']))} km")
+    else:
+        print("Nie znaleziono stacji pomiarowych w podanym zakresie odległości.")
 
