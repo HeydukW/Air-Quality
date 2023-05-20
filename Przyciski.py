@@ -36,12 +36,51 @@ def conv_data_to_json(response):
 
 
 def get_measurement_data():
-    station_id = input("Podaj ID stacji: ")
+    def generate_station_list():
+        all_station_data = download_data(URL_STATION)
+        all_station = conv_data_to_json(all_station_data)
+        print("Lista ID stacji:")
+        for station in all_station:
+            station_coords = (station['gegrLat'], station['gegrLon'])
+            station_location = get_location_from_coordinates(station_coords)
+            print(f"ID: {station['id']}, Lokalizacja: {station_location}")
+
+    def get_location_from_coordinates(coords):
+        geolocator = Nominatim(user_agent="air_quality_app")
+        location_data = geolocator.reverse(coords)
+        if location_data:
+            return location_data.address
+        else:
+            return "Nieznana lokalizacja"
+
+    root = tk.Tk()
+
+    frame = tk.Frame(root)
+    frame.pack()
+
+    station_list_button = tk.Button(frame, text="Generuj listę ID stacji", command=generate_station_list)
+    station_list_button.pack(side=tk.LEFT)
+
+    station_id_label = tk.Label(frame, text="ID stacji:")
+    station_id_label.pack(side=tk.LEFT)
+
+    station_id_entry = tk.Entry(frame)
+    station_id_entry.pack(side=tk.LEFT)
+
+    get_measurement_button = tk.Button(frame, text="Pobierz dane pomiarowe", command=lambda: get_measurement(station_id_entry.get()))
+    get_measurement_button.pack(side=tk.LEFT)
+
+    root.mainloop()
+
+
+def get_measurement(station_id):
     measure_data = download_data(URL_MEASURE_DATA, station_id)
     measure = conv_data_to_json(measure_data)
     print("Dane pomiarowe:")
     for measurement in measure['values']:
         print(f"Data: {measurement['date']}, Value: {measurement['value']}")
+
+
 
 
 def check_air_quality_index():
