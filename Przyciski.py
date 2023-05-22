@@ -53,6 +53,15 @@ def get_measurement_data():
         else:
             return "Nieznana lokalizacja"
 
+    def get_measurement(station_id, start_date):
+        measure_data = download_data(URL_MEASURE_DATA, station_id)
+        measure = conv_data_to_json(measure_data)
+        print("Dane pomiarowe:")
+        for measurement in measure['values']:
+            measurement_date = measurement['date'].split(' ')[0]
+            if measurement_date >= start_date:
+                print(f"Data: {measurement['date']}, Value: {measurement['value']}")
+
     root = tk.Tk()
 
     frame = tk.Frame(root)
@@ -67,18 +76,27 @@ def get_measurement_data():
     station_id_entry = tk.Entry(frame)
     station_id_entry.pack(side=tk.LEFT)
 
-    get_measurement_button = tk.Button(frame, text="Pobierz dane pomiarowe", command=lambda: get_measurement(station_id_entry.get()))
+    start_date_label = tk.Label(frame, text="Data początkowa (RRRR-MM-DD):")
+    start_date_label.pack(side=tk.LEFT)
+
+    start_date_entry = tk.Entry(frame)
+    start_date_entry.pack(side=tk.LEFT)
+
+    get_measurement_button = tk.Button(frame, text="Pobierz dane pomiarowe", command=lambda: get_measurement(station_id_entry.get(), start_date_entry.get()))
     get_measurement_button.pack(side=tk.LEFT)
 
     root.mainloop()
 
 
-def get_measurement(station_id):
+def get_measurement(station_id, start_date):
     measure_data = download_data(URL_MEASURE_DATA, station_id)
     measure = conv_data_to_json(measure_data)
     print("Dane pomiarowe:")
     for measurement in measure['values']:
-        print(f"Data: {measurement['date']}, Value: {measurement['value']}")
+        measurement_date = measurement['date'].split(' ')[0]
+        if measurement_date >= start_date:
+            print(f"Data: {measurement['date']}, Value: {measurement['value']}")
+
 
 
 
