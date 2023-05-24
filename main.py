@@ -74,9 +74,6 @@ def generate_station_map():
     x, y = m(lons, lats)
     m.scatter(x, y, s=50, color='red', edgecolor='black')
 
-    # Dodanie etykiet dla stacji
-    for i in range(len(all_station)):
-        plt.text(x[i], y[i], all_station[i]['stationName'], fontsize=8, ha='center', va='center')
 
     plt.title('Mapa lokalizacji stacji pomiarowych')
     plt.show()
