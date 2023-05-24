@@ -13,7 +13,6 @@ URL_MEASURE_DATA = "https://api.gios.gov.pl/pjp-api/rest/data/getData/"
 URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 
 
-
 def download_data(url, id="-1"):
     headers = {'User-Agent': 'Mozilla/5.0'}
     timeout = 2000  # Ustaw w sekundach
@@ -29,7 +28,6 @@ def download_data(url, id="-1"):
     else:
         print(f'Błąd pobierania danych: {response.status_code}')
         exit()
-
 
 
 def conv_data_to_json(response):
@@ -84,6 +82,20 @@ def get_measurement_data():
             measurement_date = dt.strptime(measurement['date'], '%Y-%m-%d %H:%M:%S')
             if measurement_date.date() == start_date.date():
                 print(f"Data: {measurement['date']}, Value: {measurement['value']}")
+        # Dodano przyciski do generowania wartości ekstremalnych
+        generate_extremes_button = tk.Button(frame_measurement_analysis, text="Generuj wartości ekstremalne",
+                                             command=lambda: generate_extremes(measure['values']))
+        generate_extremes_button.pack(side=tk.LEFT)
+
+    def generate_extremes(values):
+        value_list = [float(measurement['value']) for measurement in values if measurement['value'] is not None]
+        if value_list:
+            max_value = max(value_list)
+            min_value = min(value_list)
+            print(f"Największa wartość: {max_value}")
+            print(f"Najmniejsza wartość: {min_value}")
+        else:
+            print("Brak dostępnych danych pomiarowych.")
 
     def generate_plot():
         sensor_id = sensor_entry.get()
@@ -130,8 +142,6 @@ def get_measurement_data():
             print(f"Jakość powietrza: {air_quality_index['stIndexLevel']['indexLevelName']}")
         else:
             print("Brak danych o wskaźniku jakości powietrza dla tej stacji.")
-
-            ###################################################################
 
     def find_nearest_station():
         user_location = location_entry.get()
@@ -237,11 +247,12 @@ def get_measurement_data():
     distance_entry = tk.Entry(frame_nearest_station)
     distance_entry.pack(side=tk.LEFT)
 
-    find_nearest_station_button = tk.Button(frame_nearest_station, text="Znajdź najbliższą stację",
-                                            command=find_nearest_station)
-    find_nearest_station_button.pack(side=tk.LEFT)
+    find_station_button = tk.Button(frame_nearest_station, text="Znajdź najbliższą stację",
+                                    command=find_nearest_station)
+    find_station_button.pack(side=tk.LEFT)
 
     root.mainloop()
 
 
-get_measurement_data()
+if __name__ == "__main__":
+    get_measurement_data()
