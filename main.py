@@ -13,13 +13,15 @@ URL_MEASURE_DATA = "https://api.gios.gov.pl/pjp-api/rest/data/getData/"
 URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 
 
+
 def download_data(url, id="-1"):
     headers = {'User-Agent': 'Mozilla/5.0'}
+    timeout = 200  # Ustaw w sekundach
 
     if id == "-1":
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=timeout)
     else:
-        response = requests.get(f'{url}{id}', headers=headers)
+        response = requests.get(f'{url}{id}', headers=headers, timeout=timeout)
 
     if response.ok:
         print(f'Kod odpowiedzi: {response.status_code}')
@@ -27,6 +29,7 @@ def download_data(url, id="-1"):
     else:
         print(f'Błąd pobierania danych: {response.status_code}')
         exit()
+
 
 
 def conv_data_to_json(response):
