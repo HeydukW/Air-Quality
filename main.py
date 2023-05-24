@@ -112,7 +112,7 @@ def get_measurement_data():
             print("Wskaźnik jakości powietrza:")
             print(f"Data: {air_quality_index['stCalcDate']}")
             print(f"Indeks CAQI: {air_quality_index['stIndexLevel']['indexLevelName']}")
-            print(f"Jakość powietrza: {air_quality_index['stIndexLevel']['indexLevelNamePL']}")
+            print(f"Jakość powietrza: {air_quality_index['stIndexLevel']['indexLevelName']}")
         else:
             print("Brak danych o wskaźniku jakości powietrza dla tej stacji.")
 
@@ -230,4 +230,3 @@ def get_measurement_data():
 
 
 get_measurement_data()
-
