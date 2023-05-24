@@ -55,9 +55,25 @@ def get_measurement_data():
         else:
             return "Nieznana lokalizacja"
 
-    def get_measurement(station_id, start_date):
+    def get_sensor_list():
+        station_id = station_entry.get()
+        url = f"https://api.gios.gov.pl/pjp-api/rest/station/sensors/{station_id}"
+        sensor_data = download_data(url)
+        sensors = conv_data_to_json(sensor_data)
+
+        if sensors:
+            print("Lista sensorów:")
+            for sensor in sensors:
+                print(f"ID: {sensor['id']}")
+                print(f"Nazwa parametru: {sensor['param']['paramName']}")
+        else:
+            print("Brak dostępnych sensorów dla podanej stacji pomiarowej.")
+
+    def get_measurement():
+        sensor_id = sensor_entry.get()
+        start_date = start_date_entry.get()
         start_date = dt.strptime(start_date, '%Y-%m-%d')
-        measure_data = download_data(URL_MEASURE_DATA, station_id)
+        measure_data = download_data(URL_MEASURE_DATA, sensor_id)
         measure = conv_data_to_json(measure_data)
         print("Dane pomiarowe:")
         for measurement in measure['values']:
@@ -65,9 +81,11 @@ def get_measurement_data():
             if measurement_date >= start_date:
                 print(f"Data: {measurement['date']}, Value: {measurement['value']}")
 
-    def generate_plot(station_id, start_date):
+    def generate_plot():
+        sensor_id = sensor_entry.get()
+        start_date = start_date_entry.get()
         start_date = dt.strptime(start_date, '%Y-%m-%d')
-        measure_data = download_data(URL_MEASURE_DATA, station_id)
+        measure_data = download_data(URL_MEASURE_DATA, sensor_id)
         measure = conv_data_to_json(measure_data)
 
         dates = []
@@ -85,178 +103,131 @@ def get_measurement_data():
         plt.title('Wykres danych pomiarowych')
         plt.show()
 
-    root = tk.Tk()
+    def check_index():
+        station_id = station_entry.get()
+        index_data = download_data(URL_AIR_QUALITY_INDEX, station_id)
+        air_quality_index = conv_data_to_json(index_data)
 
-    frame = tk.Frame(root)
-    frame.pack()
+        if air_quality_index:
+            print("Wskaźnik jakości powietrza:")
+            print(f"Data: {air_quality_index['stCalcDate']}")
+            print(f"Indeks CAQI: {air_quality_index['stIndexLevel']['indexLevelName']}")
+            print(f"Jakość powietrza: {air_quality_index['stIndexLevel']['indexLevelNamePL']}")
+        else:
+            print("Brak danych o wskaźniku jakości powietrza dla tej stacji.")
 
-    station_list_button = tk.Button(frame, text="Generuj listę ID stacji", command=generate_station_list)
-    station_list_button.pack(side=tk.LEFT)
+            ###################################################################
 
-    station_id_label = tk.Label(frame, text="ID stacji:")
-    station_id_label.pack(side=tk.LEFT)
+    def find_nearest_station():
+        user_location = location_entry.get()
+        distance_range = float(distance_entry.get())
 
-    station_id_entry = tk.Entry(frame)
-    station_id_entry.pack(side=tk.LEFT)
+        def get_coordinates(location):
+            geolocator = Nominatim(user_agent="air_quality_app")
+            location_data = geolocator.geocode(location)
 
-    start_date_label = tk.Label(frame, text="Data początkowa (RRRR-MM-DD):")
-    start_date_label.pack(side=tk.LEFT)
+            if location_data:
+                latitude = location_data.latitude
+                longitude = location_data.longitude
+                return latitude, longitude
+            else:
+                print("Nie można znaleźć współrzędnych dla podanej lokalizacji.")
+                return None
 
-    start_date_entry = tk.Entry(frame)
-    start_date_entry.pack(side=tk.LEFT)
+        def calculate_distance(coords1, coords2):
+            return geodesic(coords1, coords2).kilometers
 
-    get_measurement_button = tk.Button(frame, text="Pobierz dane pomiarowe",
-                                      command=lambda: get_measurement(station_id_entry.get(), start_date_entry.get()))
-    get_measurement_button.pack(side=tk.LEFT)
-
-    generate_plot_button = tk.Button(frame, text="Generuj wykres",
-                                     command=lambda: generate_plot(station_id_entry.get(),
-                                                                   dt.strptime(start_date_entry.get(),
-                                                                               '%Y-%m-%d').strftime('%Y-%m-%d')))
-
-    generate_plot_button.pack(side=tk.LEFT)
-
-    root.mainloop()
-
-
-def check_air_quality_index():
-    def generate_station_list():
         all_station_data = download_data(URL_STATION)
         all_station = conv_data_to_json(all_station_data)
-        print("Lista ID stacji:")
-        for station in all_station:
-            station_coords = (station['gegrLat'], station['gegrLon'])
-            station_location = get_location_from_coordinates(station_coords)
-            print(f"ID: {station['id']}, Lokalizacja: {station_location}")
 
-    def get_location_from_coordinates(coords):
-        geolocator = Nominatim(user_agent="air_quality_app")
-        location_data = geolocator.reverse(coords)
-        if location_data:
-            return location_data.address
+        user_coords = get_coordinates(user_location)
+
+        if user_coords:
+            stations_within_range = []
+
+            for station in all_station:
+                station_coords = (station['gegrLat'], station['gegrLon'])
+                station_distance = calculate_distance(user_coords, station_coords)
+
+                if station_distance <= distance_range:
+                    stations_within_range.append(station)
+
+            if stations_within_range:
+                print(f"Liczba stacji w odległości {distance_range} km: {len(stations_within_range)}")
+                print("Stacje pomiarowe w określonym zakresie:")
+                for station in stations_within_range:
+                    print(f"ID: {station['id']}")
+                    print(f"Nazwa: {station['stationName']}")
+                    print(f"Odległość: {calculate_distance(user_coords, (station['gegrLat'], station['gegrLon']))} km")
+            else:
+                print("Brak stacji pomiarowych w określonym zakresie.")
         else:
-            return "Nieznana lokalizacja"
+            print("Nie można znaleźć stacji pomiarowej dla podanej lokalizacji.")
 
     root = tk.Tk()
 
-    frame = tk.Frame(root)
-    frame.pack()
+    frame_station_sensor = tk.Frame(root)
+    frame_station_sensor.pack()
 
-    station_list_button = tk.Button(frame, text="Generuj listę ID stacji", command=generate_station_list)
+    station_list_button = tk.Button(frame_station_sensor, text="Generuj listę ID stacji", command=generate_station_list)
     station_list_button.pack(side=tk.LEFT)
 
-    station_id_label = tk.Label(frame, text="ID stacji:")
-    station_id_label.pack(side=tk.LEFT)
+    station_label = tk.Label(frame_station_sensor, text="ID stacji:")
+    station_label.pack(side=tk.LEFT)
 
-    station_id_entry = tk.Entry(frame)
-    station_id_entry.pack(side=tk.LEFT)
+    station_entry = tk.Entry(frame_station_sensor)
+    station_entry.pack(side=tk.LEFT)
 
-    check_index_button = tk.Button(frame, text="Sprawdź indeks jakości powietrza",
-                                   command=lambda: check_index(station_id_entry.get()))
+    sensor_list_button = tk.Button(frame_station_sensor, text="Generuj listę sensorów", command=get_sensor_list)
+    sensor_list_button.pack(side=tk.LEFT)
+
+    frame_measurement_analysis = tk.Frame(root)
+    frame_measurement_analysis.pack()
+
+    sensor_label = tk.Label(frame_measurement_analysis, text="ID sensora:")
+    sensor_label.pack(side=tk.LEFT)
+
+    sensor_entry = tk.Entry(frame_measurement_analysis)
+    sensor_entry.pack(side=tk.LEFT)
+
+    start_date_label = tk.Label(frame_measurement_analysis, text="Data początkowa (RRRR-MM-DD):")
+    start_date_label.pack(side=tk.LEFT)
+
+    start_date_entry = tk.Entry(frame_measurement_analysis)
+    start_date_entry.pack(side=tk.LEFT)
+
+    get_measurement_button = tk.Button(frame_measurement_analysis, text="Pobierz dane pomiarowe",
+                                       command=get_measurement)
+    get_measurement_button.pack(side=tk.LEFT)
+
+    generate_plot_button = tk.Button(frame_measurement_analysis, text="Generuj wykres", command=generate_plot)
+    generate_plot_button.pack(side=tk.LEFT)
+
+    check_index_button = tk.Button(frame_measurement_analysis, text="Sprawdź wskaźnik jakości powietrza",
+                                   command=check_index)
     check_index_button.pack(side=tk.LEFT)
 
-    root.mainloop()
+    frame_nearest_station = tk.Frame(root)
+    frame_nearest_station.pack()
 
-def check_index(station_id):
-    air_quality_index_data = download_data(URL_AIR_QUALITY_INDEX, station_id)
-    air_quality_index = conv_data_to_json(air_quality_index_data)
+    location_label = tk.Label(frame_nearest_station, text="Lokalizacja:")
+    location_label.pack(side=tk.LEFT)
 
-    if 'stIndexLevel' in air_quality_index and 'calcDate' in air_quality_index['stIndexLevel']:
-        print("Indeks jakości powietrza:")
-        print(f"Wartość: {air_quality_index['stIndexLevel']['indexLevelName']}")
-        print(f"Data: {air_quality_index['stIndexLevel']['calcDate']}")
-    else:
-        print("Nieprawidłowe dane indeksu jakości powietrza.")
+    location_entry = tk.Entry(frame_nearest_station)
+    location_entry.pack(side=tk.LEFT)
 
-    selected_station_data = download_data(URL_MEASURE_STATION, station_id)
-    selected_station_sensors = conv_data_to_json(selected_station_data)
+    distance_label = tk.Label(frame_nearest_station, text="Odległość (w km):")
+    distance_label.pack(side=tk.LEFT)
 
-    if selected_station_sensors:
-        print("Parametry dla wybranej stacji:")
-        for sensor in selected_station_sensors:
-            print(f"- {sensor['param']['paramName']}")
-    else:
-        exit()
+    distance_entry = tk.Entry(frame_nearest_station)
+    distance_entry.pack(side=tk.LEFT)
 
-    measure_data = download_data(URL_MEASURE_DATA, station_id)
-    measure = conv_data_to_json(measure_data)
-    print("Dane pomiarowe:")
-    for measurement in measure['values']:
-        print(f"Data: {measurement['date']}, Value: {measurement['value']}")
-
-    air_quality_index_data = download_data(URL_AIR_QUALITY_INDEX, station_id)
-    air_quality_index = conv_data_to_json(air_quality_index_data)
-    print("Indeks jakości powietrza:")
-    print(air_quality_index)
-
-
-def find_nearest_station():
-    user_location = input("Podaj swoją lokalizację: ")
-    distance_range = float(input("Podaj zakres (w km): "))
-
-    def get_coordinates(location):
-        geolocator = Nominatim(user_agent="air_quality_app")
-        location_data = geolocator.geocode(location)
-
-        if location_data:
-            latitude = location_data.latitude
-            longitude = location_data.longitude
-            return latitude, longitude
-        else:
-            print("Nie można znaleźć współrzędnych dla podanej lokalizacji.")
-            return None
-
-    def calculate_distance(coords1, coords2):
-        return geodesic(coords1, coords2).kilometers
-
-    all_station_data = download_data(URL_STATION)
-    all_station = conv_data_to_json(all_station_data)
-
-    user_coords = get_coordinates(user_location)
-
-    if user_coords:
-        stations_within_range = []
-
-        for station in all_station:
-            station_coords = (station['gegrLat'], station['gegrLon'])
-            station_distance = calculate_distance(user_coords, station_coords)
-
-            if station_distance <= distance_range:
-                stations_within_range.append(station)
-
-        if stations_within_range:
-            print(f"Liczba stacji w odległości {distance_range} km: {len(stations_within_range)}")
-            print("Stacje pomiarowe w określonym zakresie:")
-            for station in stations_within_range:
-                print(f"ID: {station['id']}")
-                print(f"Nazwa: {station['stationName']}")
-                print(f"Odległość: {calculate_distance(user_coords, (station['gegrLat'], station['gegrLon']))} km")
-        else:
-            print("Brak stacji pomiarowych w określonym zakresie.")
-    else:
-        print("Nie można znaleźć stacji pomiarowej dla podanej lokalizacji.")
-
-
-def main_menu():
-    root = tk.Tk()
-
-    frame = tk.Frame(root)
-    frame.pack()
-
-    download_button = tk.Button(frame, text="Pobierz dane pomiarowe", command=get_measurement_data)
-    download_button.pack(side=tk.LEFT)
-
-    check_index_button = tk.Button(frame, text="Sprawdź indeks jakości powietrza", command=check_air_quality_index)
-    check_index_button.pack(side=tk.LEFT)
-
-    find_station_button = tk.Button(frame, text="Znajdź najbliższą stację pomiarową", command=find_nearest_station)
-    find_station_button.pack(side=tk.LEFT)
-
-    quit_button = tk.Button(frame, text="Wyjście", command=root.quit)
-    quit_button.pack(side=tk.LEFT)
+    find_nearest_station_button = tk.Button(frame_nearest_station, text="Znajdź najbliższą stację",
+                                            command=find_nearest_station)
+    find_nearest_station_button.pack(side=tk.LEFT)
 
     root.mainloop()
 
 
-if __name__ == "__main__":
-    main_menu()
+get_measurement_data()
+
