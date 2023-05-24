@@ -6,6 +6,8 @@ import json
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 import numpy as np
+import sqlite3
+
 
 URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
 URL_MEASURE_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/sensors/"
@@ -13,7 +15,24 @@ URL_MEASURE_DATA = "https://api.gios.gov.pl/pjp-api/rest/data/getData/"
 URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 
 
+DATABASE_FILE = "air_quality.db"
+
+def create_table():
+    conn = sqlite3.connect(DATABASE_FILE)
+    c = conn.cursor()
+
+    c.execute('''CREATE TABLE IF NOT EXISTS measurement_data
+                 (station_id INTEGER, sensor_id INTEGER, date TEXT, value REAL)''')
+
+    conn.commit()
+    conn.close()
+
+create_table()
+
+stop_flag = False  # Flaga do zatrzymania pobierania danych
+
 def download_data(url, id="-1"):
+    global stop_flag  # Dodano globalną flagę zatrzymania pobierania danych
     headers = {'User-Agent': 'Mozilla/5.0'}
     timeout = 2000  # Ustaw w sekundach
 
@@ -27,7 +46,9 @@ def download_data(url, id="-1"):
         return response
     else:
         print(f'Błąd pobierania danych: {response.status_code}')
+        stop_flag = True  # Ustawienie flagi na True w przypadku błędu
         exit()
+
 
 
 def conv_data_to_json(response):
@@ -41,6 +62,7 @@ def conv_data_to_json(response):
 
 def get_measurement_data():
     def generate_station_list():
+        global stop_flag  # Dodano globalną flagę zatrzymania pobierania danych
         all_station_data = download_data(URL_STATION)
         all_station = conv_data_to_json(all_station_data)
         print("Lista ID stacji:")
@@ -48,6 +70,8 @@ def get_measurement_data():
             station_coords = (station['gegrLat'], station['gegrLon'])
             station_location = get_location_from_coordinates(station_coords)
             print(f"ID: {station['id']}, Lokalizacja: {station_location}")
+            if stop_flag:
+                break
 
     def get_location_from_coordinates(coords):
         geolocator = Nominatim(user_agent="air_quality_app")
@@ -86,6 +110,27 @@ def get_measurement_data():
         generate_extremes_button = tk.Button(frame_measurement_analysis, text="Generuj wartości ekstremalne",
                                              command=lambda: generate_extremes(measure['values']))
         generate_extremes_button.pack(side=tk.LEFT)
+
+        # Zapisz dane pomiarowe do bazy danych
+        conn = sqlite3.connect(DATABASE_FILE)
+        c = conn.cursor()
+
+        measurements = []
+        for measurement in measure['values']:
+            measurement_date = dt.strptime(measurement['date'], '%Y-%m-%d %H:%M:%S')
+            if measurement_date.date() == start_date.date() and measurement['value'] is not None:
+                measurements.append((int(sensor_id), float(measurement['value']), measurement['date']))
+
+        c.executemany('INSERT INTO measurement_data (sensor_id, value, date) VALUES (?, ?, ?)', measurements)
+        conn.commit()
+
+        # Dodaj ten kawałek kodu, aby sprawdzić czy dane zostały zapisane poprawnie
+        c.execute('SELECT * FROM measurement_data')
+        rows = c.fetchall()
+        for row in rows:
+            print(row)
+
+        conn.close()
 
     def generate_extremes(values):
         value_list = [float(measurement['value']) for measurement in values if measurement['value'] is not None]
@@ -197,6 +242,10 @@ def get_measurement_data():
     station_list_button = tk.Button(frame_station_sensor, text="Generuj listę ID stacji", command=generate_station_list)
     station_list_button.pack(side=tk.LEFT)
 
+    # Dodano przycisk "Stop" do zatrzymania pobierania danych
+    stop_button = tk.Button(frame_station_sensor, text="Stop", command=lambda: stop_download())
+    stop_button.pack(side=tk.LEFT)
+
     station_label = tk.Label(frame_station_sensor, text="ID stacji:")
     station_label.pack(side=tk.LEFT)
 
@@ -251,9 +300,13 @@ def get_measurement_data():
                                     command=find_nearest_station)
     find_station_button.pack(side=tk.LEFT)
 
+
+    def stop_download():
+        global stop_flag  # Ustawienie flagi zatrzymania na True
+        stop_flag = True
+
     root.mainloop()
 
 
 if __name__ == "__main__":
     get_measurement_data()
-
