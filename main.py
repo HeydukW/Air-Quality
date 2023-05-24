@@ -5,6 +5,7 @@ import requests
 import json
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
+import numpy as np
 
 URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
 URL_MEASURE_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/sensors/"
@@ -71,14 +72,14 @@ def get_measurement_data():
 
     def get_measurement():
         sensor_id = sensor_entry.get()
-        start_date = start_date_entry.get()
-        start_date = dt.strptime(start_date, '%Y-%m-%d')
+        start_date_str = start_date_entry.get()
+        start_date = dt.strptime(start_date_str, '%Y-%m-%d')
         measure_data = download_data(URL_MEASURE_DATA, sensor_id)
         measure = conv_data_to_json(measure_data)
         print("Dane pomiarowe:")
         for measurement in measure['values']:
             measurement_date = dt.strptime(measurement['date'], '%Y-%m-%d %H:%M:%S')
-            if measurement_date >= start_date:
+            if measurement_date.date() == start_date.date():
                 print(f"Data: {measurement['date']}, Value: {measurement['value']}")
 
     def generate_plot():
@@ -94,8 +95,9 @@ def get_measurement_data():
         for measurement in measure['values']:
             measurement_date = dt.strptime(measurement['date'], '%Y-%m-%d %H:%M:%S')
             if measurement_date >= start_date:
-                dates.append(measurement_date)
-                values.append(float(measurement['value']))
+                if measurement['value'] is not None:
+                    dates.append(measurement_date)
+                    values.append(float(measurement['value']))
 
         plt.plot(dates, values)
         plt.xlabel('Data')
