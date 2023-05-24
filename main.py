@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from datetime import datetime as dt, timedelta
 import tkinter as tk
 import requests
