@@ -7,6 +7,8 @@ from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 import numpy as np
 import sqlite3
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 
 
 URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
@@ -49,6 +51,35 @@ def download_data(url, id="-1"):
         stop_flag = True  # Ustawienie flagi na True w przypadku błędu
         exit()
 
+def generate_station_map():
+    all_station_data = download_data(URL_STATION)
+    all_station = conv_data_to_json(all_station_data)
+
+    lats = []
+    lons = []
+    for station in all_station:
+        lats.append(float(station['gegrLat']))
+        lons.append(float(station['gegrLon']))
+
+    # Tworzenie mapy
+    fig = plt.figure(figsize=(12, 10))
+    m = Basemap(projection='lcc', resolution='l', lat_0=52, lon_0=19,
+                width=2E6, height=1.4E6)
+    m.shadedrelief()
+    m.drawcoastlines(color='gray')
+    m.drawcountries(color='gray')
+    m.drawstates(color='gray')
+
+    # Rysowanie lokalizacji stacji
+    x, y = m(lons, lats)
+    m.scatter(x, y, s=50, color='red', edgecolor='black')
+
+    # Dodanie etykiet dla stacji
+    for i in range(len(all_station)):
+        plt.text(x[i], y[i], all_station[i]['stationName'], fontsize=8, ha='center', va='center')
+
+    plt.title('Mapa lokalizacji stacji pomiarowych')
+    plt.show()
 
 
 def conv_data_to_json(response):
@@ -299,6 +330,9 @@ def get_measurement_data():
     find_station_button = tk.Button(frame_nearest_station, text="Znajdź najbliższą stację",
                                     command=find_nearest_station)
     find_station_button.pack(side=tk.LEFT)
+
+    generate_map_button = tk.Button(frame_nearest_station, text="Generuj mapę stacji", command=generate_station_map)
+    generate_map_button.pack(side=tk.LEFT)
 
 
     def stop_download():
