@@ -16,7 +16,7 @@ URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 
 def download_data(url, id="-1"):
     headers = {'User-Agent': 'Mozilla/5.0'}
-    timeout = 200  # Ustaw w sekundach
+    timeout = 2000  # Ustaw w sekundach
 
     if id == "-1":
         response = requests.get(url, headers=headers, timeout=timeout)
@@ -106,6 +106,16 @@ def get_measurement_data():
         plt.xlabel('Data')
         plt.ylabel('Wartość')
         plt.title('Wykres danych pomiarowych')
+
+        # Wyznaczanie linii trendu
+        if len(dates) >= 2:
+            x = np.array([(date - dates[0]).days for date in dates])
+            y = np.array(values)
+            coeffs = np.polyfit(x, y, 1)
+            trendline = np.poly1d(coeffs)
+            plt.plot(dates, trendline(x), color='red', linestyle='--', label='Linia trendu')
+
+        plt.legend()
         plt.show()
 
     def check_index():
