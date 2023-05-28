@@ -8,6 +8,9 @@ import numpy as np
 import sqlite3
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
+import sys
+from tkinter.scrolledtext import ScrolledText
+
 
 
 URL_STATION = "https://api.gios.gov.pl/pjp-api/rest/station/findAll"
@@ -17,6 +20,19 @@ URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 
 
 DATABASE_FILE = "air_quality.db"
+
+def redirect_stdout_to_text_widget(widget):
+    class StdoutRedirector:
+        def __init__(self, text_widget):
+            self.text_widget = text_widget
+
+        def write(self, message):
+            self.text_widget.insert(tk.END, message)
+
+        def flush(self):
+            pass
+
+    sys.stdout = StdoutRedirector(widget)
 
 def create_table():
     """
@@ -364,6 +380,13 @@ def get_measurement_data():
 
     frame_station_sensor = tk.Frame(root)
     frame_station_sensor.pack()
+
+    # Utwórz okno tekstowe do wyświetlania wyników
+    text_widget = ScrolledText(root)
+    text_widget.pack()
+
+    # Przekieruj wyjście standardowe do okna tekstowego
+    redirect_stdout_to_text_widget(text_widget)
 
     station_list_button = tk.Button(frame_station_sensor, text="Generuj listę ID stacji", command=generate_station_list)
     station_list_button.pack(side=tk.LEFT)
