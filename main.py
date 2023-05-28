@@ -19,6 +19,10 @@ URL_AIR_QUALITY_INDEX = "https://api.gios.gov.pl/pjp-api/rest/aqindex/getIndex/"
 DATABASE_FILE = "air_quality.db"
 
 def create_table():
+    """
+        Tworzy tabelę w bazie danych o nazwie 'measurement_data'.
+        Tabela zawiera kolumny: station_id (INTEGER), sensor_id (INTEGER), date (TEXT), value (REAL).
+        """
     conn = sqlite3.connect(DATABASE_FILE)
     c = conn.cursor()
 
@@ -33,6 +37,14 @@ create_table()
 stop_flag = False  # Flaga do zatrzymania pobierania danych
 
 def download_data(url, id="-1"):
+    """
+       Pobiera dane z podanego URL.
+       Parametry:
+           - url (str): Adres URL do pobrania danych.
+           - id (str, opcjonalny): ID stacji/sensora. Domyślnie "-1".
+       Zwraca:
+           - response (Response): Obiekt odpowiedzi HTTP.
+       """
     global stop_flag  # Dodano globalną flagę zatrzymania pobierania danych
     headers = {'User-Agent': 'Mozilla/5.0'}
     timeout = 2000  # Ustaw w sekundach
@@ -51,6 +63,10 @@ def download_data(url, id="-1"):
         exit()
 
 def generate_station_map():
+    """
+        Generuje mapę lokalizacji stacji pomiarowych.
+        Wykorzystuje moduł Basemap z biblioteki matplotlib.
+        """
     all_station_data = download_data(URL_STATION)
     all_station = conv_data_to_json(all_station_data)
 
@@ -79,6 +95,13 @@ def generate_station_map():
 
 
 def conv_data_to_json(response):
+    """
+        Konwertuje dane z formatu JSON na słownik.
+        Parametry:
+            - response (Response): Obiekt odpowiedzi HTTP.
+        Zwraca:
+            - data_dict (dict): Słownik zawierający przekonwertowane dane.
+        """
     try:
         data = response.json()
         return data
@@ -89,6 +112,12 @@ def conv_data_to_json(response):
 
 def get_measurement_data():
     def generate_station_list():
+        """
+            Generuje listę stacji, pobiera ich dane i wypisuje ich identyfikatory oraz lokalizacje.
+
+            Zwraca:
+                None
+            """
         global stop_flag  # Dodano globalną flagę zatrzymania pobierania danych
         all_station_data = download_data(URL_STATION)
         all_station = conv_data_to_json(all_station_data)
@@ -101,6 +130,17 @@ def get_measurement_data():
                 break
 
     def get_location_from_coordinates(coords):
+        """
+            Pobiera lokalizację na podstawie współrzędnych geograficznych.
+
+            Args:
+                coords (tuple): Tuple zawierający współrzędne (latitude, longitude).
+
+            Returns:
+                str: Lokalizacja na podstawie współrzędnych geograficznych.
+                     Jeśli lokalizacja jest znana, zwraca adres.
+                     W przeciwnym razie zwraca "Nieznana lokalizacja".
+            """
         geolocator = Nominatim(user_agent="air_quality_app")
         location_data = geolocator.reverse(coords)
         if location_data:
@@ -109,6 +149,12 @@ def get_measurement_data():
             return "Nieznana lokalizacja"
 
     def get_sensor_list():
+        """
+            Pobiera listę czujników dla określonej stacji i wypisuje ich identyfikatory oraz nazwy parametrów.
+
+            Zwraca:
+                None
+            """
         station_id = station_entry.get()
         url = f"https://api.gios.gov.pl/pjp-api/rest/station/sensors/{station_id}"
         sensor_data = download_data(url)
@@ -123,6 +169,13 @@ def get_measurement_data():
             print("Brak dostępnych sensorów dla podanej stacji pomiarowej.")
 
     def get_measurement():
+        """
+           Pobiera dane pomiarowe dla określonego czujnika i daty, wypisuje te dane,
+                generuje wartości ekstremalne, zapisuje dane pomiarowe do bazy danych i weryfikuje zapisane dane.
+
+           Zwraca:
+               None
+           """
         sensor_id = sensor_entry.get()
         start_date_str = start_date_entry.get()
         start_date = dt.strptime(start_date_str, '%Y-%m-%d')
@@ -160,6 +213,15 @@ def get_measurement_data():
         conn.close()
 
     def generate_extremes(values):
+        """
+            Generuje wartości ekstremalne na podstawie listy pomiarów.
+
+            Args:
+                values (list): Lista wartości pomiarowych.
+
+            Zwraca:
+                None
+            """
         value_list = [float(measurement['value']) for measurement in values if measurement['value'] is not None]
         if value_list:
             max_value = max(value_list)
@@ -170,6 +232,12 @@ def get_measurement_data():
             print("Brak dostępnych danych pomiarowych.")
 
     def generate_plot():
+        """
+            Generuje wykres danych pomiarowych dla określonego czujnika, rozpoczynając od podanej daty.
+
+            Zwraca:
+                None
+            """
         sensor_id = sensor_entry.get()
         start_date = start_date_entry.get()
         start_date = dt.strptime(start_date, '%Y-%m-%d')
@@ -203,6 +271,12 @@ def get_measurement_data():
         plt.show()
 
     def check_index():
+        """
+            Sprawdza wskaźnik jakości powietrza dla określonej stacji i wypisuje odpowiednie informacje.
+
+            Returns:
+                None
+            """
         station_id = station_entry.get()
         index_data = download_data(URL_AIR_QUALITY_INDEX, station_id)
         air_quality_index = conv_data_to_json(index_data)
@@ -216,10 +290,25 @@ def get_measurement_data():
             print("Brak danych o wskaźniku jakości powietrza dla tej stacji.")
 
     def find_nearest_station():
+        """
+           Wyszukuje najbliższą stację na podstawie lokalizacji użytkownika i zakresu odległości.
+
+           Returns:
+               None
+           """
         user_location = location_entry.get()
         distance_range = float(distance_entry.get())
 
         def get_coordinates(location):
+            """
+                Pobiera współrzędne geograficzne dla podanej lokalizacji.
+
+                Args:
+                    location (str): Lokalizacja do przetworzenia.
+
+                Returns:
+                    tuple: Para wartości (szerokość geograficzna, długość geograficzna) lub None, jeśli nie można znaleźć współrzędnych.
+                """
             geolocator = Nominatim(user_agent="air_quality_app")
             location_data = geolocator.geocode(location)
 
@@ -232,6 +321,16 @@ def get_measurement_data():
                 return None
 
         def calculate_distance(coords1, coords2):
+            """
+                Oblicza odległość między dwoma parami współrzędnych geograficznych.
+
+                Args:
+                    coords1 (tuple): Pierwsza para współrzędnych (szerokość geograficzna, długość geograficzna).
+                    coords2 (tuple): Druga para współrzędnych (szerokość geograficzna, długość geograficzna).
+
+                Returns:
+                    float: Obliczona odległość w kilometrach.
+                """
             return geodesic(coords1, coords2).kilometers
 
         all_station_data = download_data(URL_STATION)
